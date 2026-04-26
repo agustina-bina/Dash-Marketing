@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glosario - GTC Marketing</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="main-content">
+      <nav class="navbar" id="navbar"></nav>
+
+      <!-- Busqueda y Filtros -->
+      <section class="section-block">
+        <div class="glosario-controls">
+          <div class="search-box large">
+            <input type="text" id="searchGlosario" placeholder="Buscar termino..." class="search-input">
+          </div>
+          <div class="category-filters" id="categoryFilters"></div>
+        </div>
+      </section>
+
+      <!-- Agregar Termino (Solo Admin) -->
+      <section class="section-block" id="addTermSection" style="display: none;">
+        <h2 class="section-heading">Agregar Termino</h2>
+        <form class="term-form" id="termForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="termino">Termino *</label>
+              <input type="text" id="termino" placeholder="Ej: CTA" required>
+            </div>
+            <div class="form-group">
+              <label for="termCategoria">Categoria *</label>
+              <select id="termCategoria" required>
+                <option value="Marketing">Marketing</option>
+                <option value="Metricas">Metricas</option>
+                <option value="Contenido">Contenido</option>
+                <option value="Estrategia">Estrategia</option>
+                <option value="Finanzas">Finanzas</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="definicion">Definicion *</label>
+            <textarea id="definicion" rows="3" placeholder="Escribe la definicion..." required></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Agregar Termino</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Lista de Terminos -->
+      <section class="section-block">
+        <h2 class="section-heading">Terminos</h2>
+        <div class="glosario-list" id="glosarioList"></div>
+        <p class="empty-state" id="emptyGlosario" style="display: none;">No se encontraron terminos.</p>
+      </section>
+
+      <!-- Textos Predefinidos -->
+      <section class="section-block">
+        <h2 class="section-heading">Textos Predefinidos</h2>
+        <p class="section-description">Textos listos para copiar y usar en tus publicaciones.</p>
+        <div class="predefined-grid" id="predefinedTexts"></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderSidebar } from '../components/sidebar.js';
+    import { renderNavbar } from '../components/navbar.js';
+    import { getEmpresaSeleccionada, isModoAdmin } from '../app.js';
+    import { getGlosario, saveTermino } from '../data.js';
+
+    let empresa = null;
+    const isAdmin = isModoAdmin();
+    let currentCategory = '';
+
+    const predefinedTexts = [
+      { title: 'CTA Compra', text: 'No te quedes sin el tuyo! Link en bio.' },
+      { title: 'CTA Interaccion', text: 'Que opinas? Cuentanos en los comentarios.' },
+      { title: 'CTA Guardado', text: 'Guarda este post para no olvidarlo.' },
+      { title: 'CTA Compartir', text: 'Comparte con alguien que necesite ver esto.' },
+      { title: 'Hook Problema', text: 'Si estas cansado de...' },
+      { title: 'Hook Curiosidad', text: 'El 90% de las personas no sabe esto...' },
+      { title: 'Hook Valor', text: '5 tips que cambiaran tu...' },
+      { title: 'Cierre Valor', text: 'Te fue util? Siguenos para mas contenido.' },
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      empresa = getEmpresaSeleccionada();
+      if (!empresa) {
+        window.location.href = '../../index.html';
+        return;
+      }
+
+      renderSidebar('glosario');
+      renderNavbar('Glosario');
+      
+      if (isAdmin) {
+        document.getElementById('addTermSection').style.display = 'block';
+      }
+
+      setupEventListeners();
+      renderCategoryFilters();
+      renderGlosario();
+      renderPredefinedTexts();
+    });
+
+    function setupEventListeners() {
+      document.getElementById('searchGlosario').addEventListener('input', (e) => {
+        renderGlosario(e.target.value);
+      });
+
+      document.getElementById('termForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveNewTerm();
+      });
+    }
+
+    function renderCategoryFilters() {
+      const glosario = getGlosario(empresa);
+      const categories = [...new Set(glosario.map(t => t.categoria).filter(c => c))];
+      
+      document.getElementById('categoryFilters').innerHTML = `
+        <button class="filter-btn ${currentCategory === '' ? 'active' : ''}" data-category="">Todos</button>
+        ${categories.map(cat => `
+          <button class="filter-btn ${currentCategory === cat ? 'active' : ''}" data-category="${escapeHtml(cat)}">${escapeHtml(cat)}</button>
+        `).join('')}
+      `;
+
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          currentCategory = e.target.dataset.category;
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          renderGlosario();
+        });
+      });
+    }
+
+    function saveNewTerm() {
+      const terminoInput = document.getElementById('termino');
+      const definicionInput = document.getElementById('definicion');
+      
+      const termino = terminoInput.value.trim();
+      const definicion = definicionInput.value.trim();
+      
+      if (!termino || !definicion) {
+        alert('Termino y definicion son obligatorios');
+        return;
+      }
+
+      const term = {
+        termino: termino,
+        definicion: definicion,
+        categoria: document.getElementById('termCategoria').value,
+      };
+
+      const result = saveTermino(empresa, term);
+      
+      if (result) {
+        document.getElementById('termForm').reset();
+        renderCategoryFilters();
+        renderGlosario();
+        showToast('Termino agregado');
+      } else {
+        alert('Error al guardar el termino');
+      }
+    }
+
+    function renderGlosario(search = '') {
+      const glosario = getGlosario(empresa);
+      const list = document.getElementById('glosarioList');
+      const empty = document.getElementById('emptyGlosario');
+
+      let filtered = glosario;
+      
+      if (currentCategory) {
+        filtered = filtered.filter(t => t.categoria === currentCategory);
+      }
+
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filtered = filtered.filter(t => 
+          (t.termino || '').toLowerCase().includes(searchLower) ||
+          (t.definicion || '').toLowerCase().includes(searchLower)
+        );
+      }
+
+      // Sort alphabetically
+      filtered.sort((a, b) => (a.termino || '').localeCompare(b.termino || ''));
+
+      if (filtered.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      list.innerHTML = filtered.map(t => `
+        <div class="glosario-item">
+          <div class="glosario-header">
+            <h3 class="glosario-termino">${escapeHtml(t.termino)}</h3>
+            <span class="glosario-categoria">${escapeHtml(t.categoria || 'Otro')}</span>
+          </div>
+          <p class="glosario-definicion">${escapeHtml(t.definicion)}</p>
+          <button class="copy-btn" data-text="${escapeHtml(t.termino)}: ${escapeHtml(t.definicion)}">
+            Copiar
+          </button>
+        </div>
+      `).join('');
+
+      // Add event listeners
+      list.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(btn.dataset.text);
+          showToast('Copiado al portapapeles');
+        });
+      });
+    }
+
+    function renderPredefinedTexts() {
+      document.getElementById('predefinedTexts').innerHTML = predefinedTexts.map(p => `
+        <div class="predefined-card">
+          <h4 class="predefined-title">${escapeHtml(p.title)}</h4>
+          <p class="predefined-text">${escapeHtml(p.text)}</p>
+          <button class="copy-btn small" data-text="${escapeHtml(p.text)}">
+            Copiar
+          </button>
+        </div>
+      `).join('');
+
+      // Add event listeners
+      document.querySelectorAll('#predefinedTexts .copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(btn.dataset.text);
+          showToast('Copiado al portapapeles');
+        });
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+  </script>
+</body>
+</html>

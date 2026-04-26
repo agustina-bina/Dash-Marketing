@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - GTC Marketing</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="main-content">
+      <nav class="navbar" id="navbar"></nav>
+
+      <!-- Objetivos del Mes -->
+      <section class="section-block">
+        <h2 class="section-heading">Objetivos del Mes</h2>
+        <div class="objectives-grid" id="objectivesGrid">
+          <div class="loading-placeholder">Cargando objetivos...</div>
+        </div>
+      </section>
+
+      <!-- Metricas Principales -->
+      <section class="section-block">
+        <h2 class="section-heading">Metricas Generales</h2>
+        <div class="metrics-grid" id="metricsGrid">
+          <div class="loading-placeholder">Cargando metricas...</div>
+        </div>
+      </section>
+
+      <!-- Estado del Contenido -->
+      <section class="section-block">
+        <h2 class="section-heading">Estado del Contenido</h2>
+        <div class="content-status-grid" id="contentStatusGrid">
+          <div class="loading-placeholder">Cargando estado...</div>
+        </div>
+      </section>
+
+      <!-- Engagement -->
+      <section class="section-block">
+        <h2 class="section-heading">Engagement</h2>
+        <div class="engagement-grid" id="engagementGrid">
+          <div class="loading-placeholder">Cargando engagement...</div>
+        </div>
+      </section>
+
+      <!-- Accesos Rapidos -->
+      <section class="section-block">
+        <h2 class="section-heading">Accesos Rapidos</h2>
+        <div class="quick-access-grid">
+          <a href="./calendario.html" class="quick-card">
+            <div class="quick-icon calendar-bg">C</div>
+            <span>Calendario</span>
+          </a>
+          <a href="./metricas.html" class="quick-card">
+            <div class="quick-icon metrics-bg">M</div>
+            <span>Metricas</span>
+          </a>
+          <a href="./ideas.html" class="quick-card">
+            <div class="quick-icon ideas-bg">I</div>
+            <span>Ideas</span>
+          </a>
+          <a href="./productos.html" class="quick-card">
+            <div class="quick-icon products-bg">P</div>
+            <span>Productos</span>
+          </a>
+          <a href="./glosario.html" class="quick-card">
+            <div class="quick-icon glossary-bg">G</div>
+            <span>Glosario</span>
+          </a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderSidebar } from '../components/sidebar.js';
+    import { renderNavbar } from '../components/navbar.js';
+    import { getEmpresaSeleccionada, isModoAdmin } from '../app.js';
+    import { getMetricas, getMetricasSemanales, getMetricasMensuales, getObjetivos, getRendimientoColor } from '../data.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const empresa = getEmpresaSeleccionada();
+      if (!empresa) {
+        window.location.href = '../../index.html';
+        return;
+      }
+
+      renderSidebar('dashboard');
+      renderNavbar('Dashboard');
+      renderDashboard(empresa);
+    });
+
+    function renderDashboard(empresa) {
+      try {
+        const metricas = getMetricas(empresa);
+        const objetivos = getObjetivos(empresa);
+        const engagementSemanal = getMetricasSemanales(empresa);
+        const engagementMensual = getMetricasMensuales(empresa);
+
+        // Calcular progreso de objetivos (con proteccion contra division por cero)
+        const progresoContenidos = objetivos.contenidosMes > 0 
+          ? Math.min((metricas.publicados / objetivos.contenidosMes) * 100, 100) 
+          : 0;
+        const progresoAlcance = objetivos.alcanceMes > 0 
+          ? Math.min((metricas.totalAlcance / objetivos.alcanceMes) * 100, 100) 
+          : 0;
+        const progresoEngagement = objetivos.engagementMeta > 0 
+          ? Math.min((metricas.promedioEngagement / objetivos.engagementMeta) * 100, 100) 
+          : 0;
+
+        // Objetivos
+        document.getElementById('objectivesGrid').innerHTML = `
+          <div class="objective-card">
+            <div class="objective-header">
+              <span class="objective-label">Contenidos Publicados</span>
+              <span class="objective-value">${metricas.publicados} / ${objetivos.contenidosMes}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill ${getProgressColor(progresoContenidos)}" style="width: ${progresoContenidos}%"></div>
+            </div>
+          </div>
+          <div class="objective-card">
+            <div class="objective-header">
+              <span class="objective-label">Alcance Total</span>
+              <span class="objective-value">${formatNumber(metricas.totalAlcance)} / ${formatNumber(objetivos.alcanceMes)}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill ${getProgressColor(progresoAlcance)}" style="width: ${progresoAlcance}%"></div>
+            </div>
+          </div>
+          <div class="objective-card">
+            <div class="objective-header">
+              <span class="objective-label">Engagement Promedio</span>
+              <span class="objective-value">${metricas.promedioEngagement}% / ${objetivos.engagementMeta}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill ${getProgressColor(progresoEngagement)}" style="width: ${progresoEngagement}%"></div>
+            </div>
+          </div>
+        `;
+
+        // Metricas
+        document.getElementById('metricsGrid').innerHTML = `
+          <div class="metric-card">
+            <div class="metric-icon alcance-bg"><span class="metric-letter">A</span></div>
+            <div class="metric-info">
+              <span class="metric-value">${formatNumber(metricas.totalAlcance)}</span>
+              <span class="metric-label">Alcance</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon likes-bg"><span class="metric-letter">L</span></div>
+            <div class="metric-info">
+              <span class="metric-value">${formatNumber(metricas.totalLikes)}</span>
+              <span class="metric-label">Likes</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon comments-bg"><span class="metric-letter">C</span></div>
+            <div class="metric-info">
+              <span class="metric-value">${formatNumber(metricas.totalComentarios)}</span>
+              <span class="metric-label">Comentarios</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon interactions-bg"><span class="metric-letter">I</span></div>
+            <div class="metric-info">
+              <span class="metric-value">${formatNumber(metricas.totalInteracciones)}</span>
+              <span class="metric-label">Interacciones</span>
+            </div>
+          </div>
+        `;
+
+        // Estado del contenido
+        document.getElementById('contentStatusGrid').innerHTML = `
+          <div class="status-card publicado">
+            <span class="status-number">${metricas.publicados}</span>
+            <span class="status-label">Publicados</span>
+          </div>
+          <div class="status-card programado">
+            <span class="status-number">${metricas.programados}</span>
+            <span class="status-label">Programados</span>
+          </div>
+          <div class="status-card pendiente">
+            <span class="status-number">${metricas.pendientes}</span>
+            <span class="status-label">Pendientes</span>
+          </div>
+          <div class="status-card total">
+            <span class="status-number">${metricas.totalContenidos}</span>
+            <span class="status-label">Total</span>
+          </div>
+        `;
+
+        // Engagement
+        const colorSemanal = getRendimientoColor(engagementSemanal);
+        const colorMensual = getRendimientoColor(engagementMensual);
+        
+        document.getElementById('engagementGrid').innerHTML = `
+          <div class="engagement-card">
+            <div class="engagement-indicator ${colorSemanal}"></div>
+            <div class="engagement-info">
+              <span class="engagement-value">${engagementSemanal}%</span>
+              <span class="engagement-label">Engagement Semanal</span>
+            </div>
+          </div>
+          <div class="engagement-card">
+            <div class="engagement-indicator ${colorMensual}"></div>
+            <div class="engagement-info">
+              <span class="engagement-value">${engagementMensual}%</span>
+              <span class="engagement-label">Engagement Mensual</span>
+            </div>
+          </div>
+          <div class="engagement-card">
+            <div class="engagement-indicator ${getRendimientoColor(metricas.promedioEngagement)}"></div>
+            <div class="engagement-info">
+              <span class="engagement-value">${metricas.promedioEngagement}%</span>
+              <span class="engagement-label">Engagement Total</span>
+            </div>
+          </div>
+        `;
+      } catch (error) {
+        console.error('Error al cargar dashboard:', error);
+        document.getElementById('objectivesGrid').innerHTML = '<p class="error-message">Error al cargar datos</p>';
+      }
+    }
+
+    function formatNumber(num) {
+      if (num === undefined || num === null || isNaN(num)) return '0';
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+      return num.toString();
+    }
+
+    function getProgressColor(percent) {
+      if (percent >= 80) return 'verde';
+      if (percent >= 50) return 'amarillo';
+      return 'rojo';
+    }
+  </script>
+</body>
+</html>

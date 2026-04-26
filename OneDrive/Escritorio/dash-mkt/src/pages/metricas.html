@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metricas - GTC Marketing</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="main-content">
+      <nav class="navbar" id="navbar"></nav>
+
+      <!-- Resumen General -->
+      <section class="section-block">
+        <h2 class="section-heading">Resumen de Metricas</h2>
+        <div class="metrics-summary-grid" id="metricsSummary">
+          <div class="loading-placeholder">Cargando resumen...</div>
+        </div>
+      </section>
+
+      <!-- Engagement por Post -->
+      <section class="section-block">
+        <h2 class="section-heading">Engagement por Publicacion</h2>
+        <div class="table-container">
+          <table class="data-table" id="engagementTable">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Contenido</th>
+                <th>Alcance</th>
+                <th>Likes</th>
+                <th>Comentarios</th>
+                <th>Guardados</th>
+                <th>Compartidos</th>
+                <th>Engagement</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="engagementTableBody"></tbody>
+          </table>
+        </div>
+        <p class="empty-state" id="emptyEngagement" style="display: none;">No hay contenido con metricas registradas.</p>
+      </section>
+
+      <!-- Formula de Engagement -->
+      <section class="section-block formula-block">
+        <h2 class="section-heading">Calculo de Engagement</h2>
+        <div class="formula-card">
+          <div class="formula-text">
+            <code>Engagement = (Likes + Comentarios x 2 + Guardados x 3 + Compartidos x 4) / Alcance x 100</code>
+          </div>
+          <div class="formula-legend">
+            <span class="legend-item"><span class="indicator verde"></span> Verde: 5% o mas (Excelente)</span>
+            <span class="legend-item"><span class="indicator amarillo"></span> Amarillo: 2% - 5% (Bueno)</span>
+            <span class="legend-item"><span class="indicator rojo"></span> Rojo: Menor a 2% (Mejorar)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Promedios -->
+      <section class="section-block">
+        <h2 class="section-heading">Promedios de Engagement</h2>
+        <div class="averages-grid" id="averagesGrid">
+          <div class="loading-placeholder">Cargando promedios...</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderSidebar } from '../components/sidebar.js';
+    import { renderNavbar } from '../components/navbar.js';
+    import { getEmpresaSeleccionada } from '../app.js';
+    import { getContenidos, getMetricas, getMetricasSemanales, getMetricasMensuales, calcularEngagement, getRendimientoColor } from '../data.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const empresa = getEmpresaSeleccionada();
+      if (!empresa) {
+        window.location.href = '../../index.html';
+        return;
+      }
+
+      renderSidebar('metricas');
+      renderNavbar('Metricas');
+      renderMetricas(empresa);
+    });
+
+    function renderMetricas(empresa) {
+      try {
+        const metricas = getMetricas(empresa);
+        const contenidos = getContenidos(empresa);
+        const engagementSemanal = getMetricasSemanales(empresa);
+        const engagementMensual = getMetricasMensuales(empresa);
+
+        // Resumen
+        document.getElementById('metricsSummary').innerHTML = `
+          <div class="summary-card">
+            <div class="summary-icon-box alcance-bg">A</div>
+            <div class="summary-info">
+              <span class="summary-value">${formatNumber(metricas.totalAlcance)}</span>
+              <span class="summary-label">Alcance Total</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon-box likes-bg">L</div>
+            <div class="summary-info">
+              <span class="summary-value">${formatNumber(metricas.totalLikes)}</span>
+              <span class="summary-label">Total Likes</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon-box comments-bg">C</div>
+            <div class="summary-info">
+              <span class="summary-value">${formatNumber(metricas.totalComentarios)}</span>
+              <span class="summary-label">Total Comentarios</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon-box guardados-bg">G</div>
+            <div class="summary-info">
+              <span class="summary-value">${formatNumber(metricas.totalGuardados)}</span>
+              <span class="summary-label">Total Guardados</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon-box compartidos-bg">S</div>
+            <div class="summary-info">
+              <span class="summary-value">${formatNumber(metricas.totalCompartidos)}</span>
+              <span class="summary-label">Total Compartidos</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon-box views-bg">V</div>
+            <div class="summary-info">
+              <span class="summary-value">${formatNumber(metricas.totalVisualizaciones)}</span>
+              <span class="summary-label">Visualizaciones</span>
+            </div>
+          </div>
+        `;
+
+        // Tabla de engagement
+        const contenidosConMetricas = contenidos.filter(c => c.alcance > 0);
+        const tableBody = document.getElementById('engagementTableBody');
+        const emptyState = document.getElementById('emptyEngagement');
+
+        if (contenidosConMetricas.length === 0) {
+          tableBody.innerHTML = '';
+          emptyState.style.display = 'block';
+        } else {
+          emptyState.style.display = 'none';
+          tableBody.innerHTML = contenidosConMetricas.map(c => {
+            const engagement = calcularEngagement(c);
+            const color = getRendimientoColor(engagement);
+            return `
+              <tr>
+                <td>${formatDate(c.fecha)}</td>
+                <td>${escapeHtml(c.idea || 'Sin titulo')}</td>
+                <td>${formatNumber(c.alcance || 0)}</td>
+                <td>${c.likes || 0}</td>
+                <td>${c.comentarios || 0}</td>
+                <td>${c.guardados || 0}</td>
+                <td>${c.compartidos || 0}</td>
+                <td><span class="engagement-badge ${color}">${engagement}%</span></td>
+                <td><span class="status-badge ${c.estado || 'pendiente'}">${c.estado || 'pendiente'}</span></td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // Promedios
+        document.getElementById('averagesGrid').innerHTML = `
+          <div class="average-card">
+            <div class="average-indicator ${getRendimientoColor(engagementSemanal)}"></div>
+            <div class="average-content">
+              <span class="average-value">${engagementSemanal}%</span>
+              <span class="average-label">Promedio Semanal</span>
+              <span class="average-period">Ultimos 7 dias</span>
+            </div>
+          </div>
+          <div class="average-card">
+            <div class="average-indicator ${getRendimientoColor(engagementMensual)}"></div>
+            <div class="average-content">
+              <span class="average-value">${engagementMensual}%</span>
+              <span class="average-label">Promedio Mensual</span>
+              <span class="average-period">Este mes</span>
+            </div>
+          </div>
+          <div class="average-card">
+            <div class="average-indicator ${getRendimientoColor(metricas.promedioEngagement)}"></div>
+            <div class="average-content">
+              <span class="average-value">${metricas.promedioEngagement}%</span>
+              <span class="average-label">Promedio General</span>
+              <span class="average-period">Todo el tiempo</span>
+            </div>
+          </div>
+        `;
+      } catch (error) {
+        console.error('Error al cargar metricas:', error);
+        document.getElementById('metricsSummary').innerHTML = '<p class="error-message">Error al cargar datos</p>';
+      }
+    }
+
+    function formatNumber(num) {
+      if (num === undefined || num === null || isNaN(num)) return '0';
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+      return num.toString();
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+      } catch {
+        return '-';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

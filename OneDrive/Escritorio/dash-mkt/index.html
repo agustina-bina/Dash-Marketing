@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTC Marketing - Selección de Empresa</title>
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <main class="selection-container">
+    <div class="selection-card">
+      <div class="logo-section">
+        <h1 class="main-title">GTC Marketing</h1>
+        <p class="subtitle">Selecciona una empresa para continuar</p>
+      </div>
+      
+      <section class="empresas-section">
+        <h2 class="section-title">Empresas</h2>
+        <div class="empresas-grid">
+          <button class="empresa-btn" data-empresa="GTC Shop">
+            <span class="empresa-icon-text">Shop</span>
+            <span class="empresa-name">GTC Shop</span>
+          </button>
+          <button class="empresa-btn" data-empresa="GTC Ribbon">
+            <span class="empresa-icon-text">Ribbon</span>
+            <span class="empresa-name">GTC Ribbon</span>
+          </button>
+          <button class="empresa-btn" data-empresa="GTC Chile">
+            <span class="empresa-icon-text">Chile</span>
+            <span class="empresa-name">GTC Chile</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <button class="admin-btn" id="adminBtn">
+          <span class="admin-icon-text">Admin</span>
+          <span class="admin-text">Administrador</span>
+        </button>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ideas - GTC Marketing</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="main-content">
+      <nav class="navbar" id="navbar"></nav>
+
+      <!-- Nueva Idea -->
+      <section class="section-block">
+        <div class="idea-form-header">
+          <h2 class="section-heading">Nueva Idea</h2>
+        </div>
+        <form class="idea-form" id="ideaForm">
+          <div class="form-group">
+            <label for="ideaTitle">Titulo de la idea *</label>
+            <input type="text" id="ideaTitle" placeholder="Escribe el titulo de tu idea..." required>
+          </div>
+          <div class="form-group">
+            <label for="ideaDescription">Descripcion</label>
+            <textarea id="ideaDescription" rows="4" placeholder="Describe tu idea con mas detalle..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ideaCategory">Categoria</label>
+              <select id="ideaCategory">
+                <option value="contenido">Contenido</option>
+                <option value="campana">Campana</option>
+                <option value="producto">Producto</option>
+                <option value="evento">Evento</option>
+                <option value="colaboracion">Colaboracion</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="ideaTags">Etiquetas (separadas por coma)</label>
+              <input type="text" id="ideaTags" placeholder="reel, tendencia, viral...">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="ideaImage">URL de imagen (opcional)</label>
+            <input type="url" id="ideaImage" placeholder="https://...">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Guardar Idea</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Lista de Ideas -->
+      <section class="section-block">
+        <div class="ideas-header">
+          <h2 class="section-heading">Mis Ideas</h2>
+          <div class="ideas-filters">
+            <select id="filterCategory" class="filter-select">
+              <option value="">Todas las categorias</option>
+              <option value="contenido">Contenido</option>
+              <option value="campana">Campana</option>
+              <option value="producto">Producto</option>
+              <option value="evento">Evento</option>
+              <option value="colaboracion">Colaboracion</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="ideas-grid" id="ideasGrid"></div>
+        <p class="empty-state" id="emptyIdeas" style="display: none;">No tienes ideas guardadas. Empieza a agregar algunas!</p>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderSidebar } from '../components/sidebar.js';
+    import { renderNavbar } from '../components/navbar.js';
+    import { getEmpresaSeleccionada, isModoAdmin } from '../app.js';
+    import { getIdeas, saveIdea, deleteIdea } from '../data.js';
+
+    let empresa = null;
+    const isAdmin = isModoAdmin();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      empresa = getEmpresaSeleccionada();
+      if (!empresa) {
+        window.location.href = '../../index.html';
+        return;
+      }
+
+      renderSidebar('ideas');
+      renderNavbar('Ideas');
+      setupEventListeners();
+      renderIdeas();
+    });
+
+    function setupEventListeners() {
+      document.getElementById('ideaForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveNewIdea();
+      });
+
+      document.getElementById('filterCategory').addEventListener('change', () => {
+        renderIdeas();
+      });
+    }
+
+    function saveNewIdea() {
+      const titleInput = document.getElementById('ideaTitle');
+      const title = titleInput.value.trim();
+      
+      if (!title) {
+        alert('El titulo es obligatorio');
+        titleInput.focus();
+        return;
+      }
+
+      const idea = {
+        title: title,
+        description: document.getElementById('ideaDescription').value.trim(),
+        category: document.getElementById('ideaCategory').value,
+        tags: document.getElementById('ideaTags').value.split(',').map(t => t.trim()).filter(t => t),
+        image: document.getElementById('ideaImage').value.trim(),
+      };
+
+      const result = saveIdea(empresa, idea);
+      
+      if (result) {
+        document.getElementById('ideaForm').reset();
+        renderIdeas();
+        showToast('Idea guardada correctamente');
+      } else {
+        alert('Error al guardar la idea');
+      }
+    }
+
+    function renderIdeas() {
+      const ideas = getIdeas(empresa);
+      const filter = document.getElementById('filterCategory').value;
+      const grid = document.getElementById('ideasGrid');
+      const empty = document.getElementById('emptyIdeas');
+
+      let filtered = ideas;
+      if (filter) {
+        filtered = ideas.filter(i => i.category === filter);
+      }
+
+      // Sort by newest first
+      filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      grid.innerHTML = filtered.map(idea => `
+        <div class="idea-card">
+          ${idea.image ? `<img src="${escapeHtml(idea.image)}" alt="${escapeHtml(idea.title)}" class="idea-image" onerror="this.style.display='none'">` : ''}
+          <div class="idea-content">
+            <div class="idea-header">
+              <span class="idea-category ${idea.category || 'otro'}">${idea.category || 'otro'}</span>
+              <span class="idea-date">${formatDate(idea.createdAt)}</span>
+            </div>
+            <h3 class="idea-title">${escapeHtml(idea.title)}</h3>
+            ${idea.description ? `<p class="idea-description">${escapeHtml(idea.description)}</p>` : ''}
+            ${idea.tags && idea.tags.length > 0 ? `
+              <div class="idea-tags">
+                ${idea.tags.map(tag => `<span class="idea-tag">#${escapeHtml(tag)}</span>`).join('')}
+              </div>
+            ` : ''}
+            <div class="idea-actions">
+              <button class="action-btn use" data-id="${idea.id}" title="Usar en calendario">C</button>
+              ${isAdmin ? `<button class="action-btn delete" data-id="${idea.id}" title="Eliminar">X</button>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      // Add event listeners
+      grid.querySelectorAll('.action-btn.use').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.id);
+          const idea = ideas.find(i => i.id === id);
+          if (idea) {
+            localStorage.setItem('ideaToUse', JSON.stringify(idea));
+            window.location.href = './calendario.html';
+          }
+        });
+      });
+
+      grid.querySelectorAll('.action-btn.delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (confirm('Eliminar esta idea?')) {
+            deleteIdea(empresa, parseInt(btn.dataset.id));
+            renderIdeas();
+            showToast('Idea eliminada');
+          }
+        });
+      });
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+      } catch {
+        return '';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+  </script>
+</body>
+</html>
