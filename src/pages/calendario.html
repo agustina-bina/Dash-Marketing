@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendario - GTC Marketing</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="main-content">
+      <nav class="navbar" id="navbar"></nav>
+
+      <!-- Controles del Calendario -->
+      <section class="section-block">
+        <div class="calendar-controls">
+          <div class="view-toggle">
+            <button class="view-btn active" data-view="month">Mensual</button>
+            <button class="view-btn" data-view="week">Semanal</button>
+          </div>
+          <div class="calendar-nav">
+            <button class="nav-btn" id="prevBtn">&lt;</button>
+            <span class="current-period" id="currentPeriod"></span>
+            <button class="nav-btn" id="nextBtn">&gt;</button>
+          </div>
+          <button class="btn-primary" id="newContentBtn">+ Nuevo Contenido</button>
+        </div>
+      </section>
+
+      <!-- Calendario -->
+      <section class="section-block">
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </section>
+
+      <!-- Lista de Contenidos -->
+      <section class="section-block">
+        <h2 class="section-heading">Contenidos del Periodo</h2>
+        <div class="content-list" id="contentList"></div>
+        <p class="empty-state" id="emptyContent" style="display: none;">No hay contenido programado para este periodo.</p>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal para crear/editar contenido -->
+  <div class="modal-overlay" id="contentModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTitle">Nuevo Contenido</h3>
+        <button class="modal-close" id="closeModal">&times;</button>
+      </div>
+      <form class="content-form" id="contentForm">
+        <input type="hidden" id="contentId">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fecha">Fecha *</label>
+            <input type="date" id="fecha" required>
+          </div>
+          <div class="form-group">
+            <label for="formato">Formato *</label>
+            <select id="formato" required>
+              <option value="">Seleccionar...</option>
+              <option value="reel">Reel</option>
+              <option value="carrusel">Carrusel</option>
+              <option value="imagen">Imagen</option>
+              <option value="story">Story</option>
+              <option value="video">Video</option>
+              <option value="live">Live</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="pilar">Pilar de Contenido *</label>
+            <select id="pilar" required>
+              <option value="">Seleccionar...</option>
+              <option value="educativo">Educativo</option>
+              <option value="entretenimiento">Entretenimiento</option>
+              <option value="inspiracional">Inspiracional</option>
+              <option value="promocional">Promocional</option>
+              <option value="comunidad">Comunidad</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="canal">Canal *</label>
+            <select id="canal" required>
+              <option value="">Seleccionar...</option>
+              <option value="instagram">Instagram</option>
+              <option value="facebook">Facebook</option>
+              <option value="tiktok">TikTok</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="youtube">YouTube</option>
+              <option value="twitter">Twitter/X</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="idea">Idea / Titulo *</label>
+          <input type="text" id="idea" placeholder="Describe la idea principal" required>
+        </div>
+
+        <div class="form-group">
+          <label for="copy">Copy</label>
+          <textarea id="copy" rows="3" placeholder="Texto del contenido..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="hook">Hook</label>
+            <input type="text" id="hook" placeholder="Gancho inicial">
+          </div>
+          <div class="form-group">
+            <label for="cta">CTA</label>
+            <input type="text" id="cta" placeholder="Call to action">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="objetivo">Objetivo</label>
+            <select id="objetivo">
+              <option value="">Seleccionar...</option>
+              <option value="awareness">Awareness</option>
+              <option value="engagement">Engagement</option>
+              <option value="trafico">Trafico</option>
+              <option value="conversiones">Conversiones</option>
+              <option value="leads">Generacion de leads</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="producto">Producto</label>
+            <input type="text" id="producto" placeholder="Producto relacionado">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="estado">Estado *</label>
+            <select id="estado" required>
+              <option value="borrador">Borrador</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="programado">Programado</option>
+              <option value="publicado">Publicado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="publicoObjetivo">Publico Objetivo</label>
+            <input type="text" id="publicoObjetivo" placeholder="Ej: Mujeres 25-35">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="recursos">Recursos Necesarios</label>
+          <textarea id="recursos" rows="2" placeholder="Imagenes, videos, props..."></textarea>
+        </div>
+
+        <!-- Metricas (solo para contenido publicado) -->
+        <div class="metrics-section" id="metricsSection" style="display: none;">
+          <h4 class="form-section-title">Metricas</h4>
+          <div class="form-row metrics-row">
+            <div class="form-group">
+              <label for="alcance">Alcance</label>
+              <input type="number" id="alcance" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label for="likes">Likes</label>
+              <input type="number" id="likes" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label for="comentarios">Comentarios</label>
+              <input type="number" id="comentarios" min="0" value="0">
+            </div>
+          </div>
+          <div class="form-row metrics-row">
+            <div class="form-group">
+              <label for="guardados">Guardados</label>
+              <input type="number" id="guardados" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label for="compartidos">Compartidos</label>
+              <input type="number" id="compartidos" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label for="visualizaciones">Visualizaciones</label>
+              <input type="number" id="visualizaciones" min="0" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="cancelBtn">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { renderSidebar } from '../components/sidebar.js';
+    import { renderNavbar } from '../components/navbar.js';
+    import { getEmpresaSeleccionada, isModoAdmin } from '../app.js';
+    import { getContenidos, saveContenido, updateContenido, deleteContenido, calcularEngagement, getRendimientoColor } from '../data.js';
+
+    let currentDate = new Date();
+    let currentView = 'month';
+    let empresa = null;
+    let editingId = null;
+    const isAdmin = isModoAdmin();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      empresa = getEmpresaSeleccionada();
+      if (!empresa) {
+        window.location.href = '../../index.html';
+        return;
+      }
+
+      renderSidebar('calendario');
+      renderNavbar('Calendario');
+      setupEventListeners();
+      renderCalendar();
+      
+      // Verificar si hay una idea para usar
+      checkIdeaToUse();
+    });
+
+    function checkIdeaToUse() {
+      const ideaData = localStorage.getItem('ideaToUse');
+      if (ideaData) {
+        try {
+          const idea = JSON.parse(ideaData);
+          localStorage.removeItem('ideaToUse');
+          openModal(null, null, idea);
+        } catch (e) {
+          localStorage.removeItem('ideaToUse');
+        }
+      }
+    }
+
+    function setupEventListeners() {
+      // Vista toggle
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          currentView = e.target.dataset.view;
+          renderCalendar();
+        });
+      });
+
+      // Navegacion
+      document.getElementById('prevBtn').addEventListener('click', () => {
+        if (currentView === 'month') {
+          currentDate.setMonth(currentDate.getMonth() - 1);
+        } else {
+          currentDate.setDate(currentDate.getDate() - 7);
+        }
+        renderCalendar();
+      });
+
+      document.getElementById('nextBtn').addEventListener('click', () => {
+        if (currentView === 'month') {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        } else {
+          currentDate.setDate(currentDate.getDate() + 7);
+        }
+        renderCalendar();
+      });
+
+      // Modal
+      document.getElementById('newContentBtn').addEventListener('click', () => openModal());
+      document.getElementById('closeModal').addEventListener('click', () => closeModal());
+      document.getElementById('cancelBtn').addEventListener('click', () => closeModal());
+      document.getElementById('contentModal').addEventListener('click', (e) => {
+        if (e.target.id === 'contentModal') closeModal();
+      });
+
+      // Estado change - mostrar metricas
+      document.getElementById('estado').addEventListener('change', (e) => {
+        const metricsSection = document.getElementById('metricsSection');
+        metricsSection.style.display = e.target.value === 'publicado' ? 'block' : 'none';
+      });
+
+      // Form submit
+      document.getElementById('contentForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveContent();
+      });
+    }
+
+    function renderCalendar() {
+      const period = document.getElementById('currentPeriod');
+      const grid = document.getElementById('calendarGrid');
+      
+      if (currentView === 'month') {
+        period.textContent = currentDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        renderMonthView(grid);
+      } else {
+        renderWeekView(grid, period);
+      }
+
+      renderContentList();
+    }
+
+    function renderMonthView(grid) {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDay = firstDay.getDay();
+      const contenidos = getContenidos(empresa);
+
+      const days = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+      let html = '<div class="calendar-header">' + days.map(d => `<div class="calendar-day-name">${d}</div>`).join('') + '</div>';
+      html += '<div class="calendar-body">';
+
+      // Empty cells before first day
+      for (let i = 0; i < startDay; i++) {
+        html += '<div class="calendar-cell empty"></div>';
+      }
+
+      // Days of month
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayContent = contenidos.filter(c => c.fecha === dateStr);
+        const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+        
+        html += `
+          <div class="calendar-cell ${isToday ? 'today' : ''}" data-date="${dateStr}">
+            <span class="cell-date">${day}</span>
+            ${dayContent.length > 0 ? `
+              <div class="cell-content">
+                ${dayContent.slice(0, 2).map(c => `
+                  <div class="content-dot ${c.estado || 'borrador'}" title="${escapeHtml(c.idea || 'Sin titulo')}"></div>
+                `).join('')}
+                ${dayContent.length > 2 ? `<span class="more-count">+${dayContent.length - 2}</span>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      html += '</div>';
+      grid.innerHTML = html;
+
+      // Click on cells to add content
+      grid.querySelectorAll('.calendar-cell:not(.empty)').forEach(cell => {
+        cell.addEventListener('click', () => {
+          const date = cell.dataset.date;
+          openModal(null, date);
+        });
+      });
+    }
+
+    function renderWeekView(grid, periodEl) {
+      const startOfWeek = new Date(currentDate);
+      startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+      
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+      periodEl.textContent = `${startOfWeek.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} - ${endOfWeek.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+      const contenidos = getContenidos(empresa);
+      let html = '<div class="week-view">';
+
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(startOfWeek);
+        day.setDate(startOfWeek.getDate() + i);
+        const dateStr = day.toISOString().split('T')[0];
+        const dayContent = contenidos.filter(c => c.fecha === dateStr);
+        const isToday = new Date().toDateString() === day.toDateString();
+
+        html += `
+          <div class="week-day ${isToday ? 'today' : ''}" data-date="${dateStr}">
+            <div class="week-day-header">
+              <span class="week-day-name">${day.toLocaleDateString('es-ES', { weekday: 'short' })}</span>
+              <span class="week-day-number">${day.getDate()}</span>
+            </div>
+            <div class="week-day-content">
+              ${dayContent.map(c => `
+                <div class="week-content-item ${c.estado || 'borrador'}" data-id="${c.id}">
+                  <span class="content-format">${c.formato || ''}</span>
+                  <span class="content-title">${escapeHtml(c.idea || 'Sin titulo')}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      html += '</div>';
+      grid.innerHTML = html;
+
+      // Add click events for week items
+      grid.querySelectorAll('.week-content-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = parseInt(item.dataset.id);
+          openModal(id);
+        });
+      });
+
+      // Click on day to add
+      grid.querySelectorAll('.week-day').forEach(day => {
+        day.addEventListener('click', () => {
+          openModal(null, day.dataset.date);
+        });
+      });
+    }
+
+    function renderContentList() {
+      const contenidos = getContenidos(empresa);
+      const list = document.getElementById('contentList');
+      const empty = document.getElementById('emptyContent');
+
+      // Filter by current period
+      let filtered;
+      if (currentView === 'month') {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        filtered = contenidos.filter(c => {
+          if (!c.fecha) return false;
+          const date = new Date(c.fecha);
+          return date.getFullYear() === year && date.getMonth() === month;
+        });
+      } else {
+        const startOfWeek = new Date(currentDate);
+        startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        
+        filtered = contenidos.filter(c => {
+          if (!c.fecha) return false;
+          const date = new Date(c.fecha);
+          return date >= startOfWeek && date <= endOfWeek;
+        });
+      }
+
+      // Sort by date
+      filtered.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+      if (filtered.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      list.innerHTML = filtered.map(c => {
+        const engagement = calcularEngagement(c);
+        const color = getRendimientoColor(engagement);
+        
+        return `
+          <div class="content-item">
+            <div class="content-date">${formatDate(c.fecha)}</div>
+            <div class="content-info">
+              <div class="content-main">
+                <span class="content-badge ${c.formato || ''}">${c.formato || 'N/A'}</span>
+                <span class="content-badge ${c.canal || ''}">${c.canal || 'N/A'}</span>
+                <h4 class="content-title">${escapeHtml(c.idea || 'Sin titulo')}</h4>
+              </div>
+              <p class="content-copy">${escapeHtml(c.copy ? c.copy.substring(0, 100) + '...' : '')}</p>
+            </div>
+            <div class="content-status">
+              <span class="status-badge ${c.estado || 'borrador'}">${c.estado || 'borrador'}</span>
+              ${c.estado === 'publicado' && c.alcance > 0 ? `
+                <span class="engagement-mini ${color}">${engagement}%</span>
+              ` : ''}
+            </div>
+            <div class="content-actions">
+              <button class="action-btn edit" data-id="${c.id}" title="Editar">E</button>
+              ${isAdmin ? `<button class="action-btn delete" data-id="${c.id}" title="Eliminar">X</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Add event listeners
+      list.querySelectorAll('.action-btn.edit').forEach(btn => {
+        btn.addEventListener('click', () => openModal(parseInt(btn.dataset.id)));
+      });
+
+      list.querySelectorAll('.action-btn.delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (confirm('Eliminar este contenido?')) {
+            deleteContenido(empresa, parseInt(btn.dataset.id));
+            renderCalendar();
+          }
+        });
+      });
+    }
+
+    function openModal(id = null, defaultDate = null, ideaData = null) {
+      editingId = id;
+      const modal = document.getElementById('contentModal');
+      const form = document.getElementById('contentForm');
+      const title = document.getElementById('modalTitle');
+      
+      form.reset();
+      document.getElementById('metricsSection').style.display = 'none';
+
+      if (id) {
+        const contenidos = getContenidos(empresa);
+        const content = contenidos.find(c => c.id === id);
+        if (content) {
+          title.textContent = 'Editar Contenido';
+          document.getElementById('contentId').value = content.id;
+          document.getElementById('fecha').value = content.fecha || '';
+          document.getElementById('formato').value = content.formato || '';
+          document.getElementById('pilar').value = content.pilar || '';
+          document.getElementById('canal').value = content.canal || '';
+          document.getElementById('idea').value = content.idea || '';
+          document.getElementById('copy').value = content.copy || '';
+          document.getElementById('hook').value = content.hook || '';
+          document.getElementById('cta').value = content.cta || '';
+          document.getElementById('objetivo').value = content.objetivo || '';
+          document.getElementById('producto').value = content.producto || '';
+          document.getElementById('estado').value = content.estado || 'borrador';
+          document.getElementById('publicoObjetivo').value = content.publicoObjetivo || '';
+          document.getElementById('recursos').value = content.recursos || '';
+          
+          if (content.estado === 'publicado') {
+            document.getElementById('metricsSection').style.display = 'block';
+            document.getElementById('alcance').value = content.alcance || 0;
+            document.getElementById('likes').value = content.likes || 0;
+            document.getElementById('comentarios').value = content.comentarios || 0;
+            document.getElementById('guardados').value = content.guardados || 0;
+            document.getElementById('compartidos').value = content.compartidos || 0;
+            document.getElementById('visualizaciones').value = content.visualizaciones || 0;
+          }
+        }
+      } else {
+        title.textContent = 'Nuevo Contenido';
+        if (defaultDate) {
+          document.getElementById('fecha').value = defaultDate;
+        }
+        // Pre-fill from idea if available
+        if (ideaData) {
+          document.getElementById('idea').value = ideaData.title || '';
+          document.getElementById('copy').value = ideaData.description || '';
+        }
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('contentModal').style.display = 'none';
+      editingId = null;
+    }
+
+    function saveContent() {
+      const form = document.getElementById('contentForm');
+      
+      // Validar campos obligatorios
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const content = {
+        fecha: document.getElementById('fecha').value,
+        formato: document.getElementById('formato').value,
+        pilar: document.getElementById('pilar').value,
+        canal: document.getElementById('canal').value,
+        idea: document.getElementById('idea').value.trim(),
+        copy: document.getElementById('copy').value.trim(),
+        hook: document.getElementById('hook').value.trim(),
+        cta: document.getElementById('cta').value.trim(),
+        objetivo: document.getElementById('objetivo').value,
+        producto: document.getElementById('producto').value.trim(),
+        estado: document.getElementById('estado').value,
+        publicoObjetivo: document.getElementById('publicoObjetivo').value.trim(),
+        recursos: document.getElementById('recursos').value.trim(),
+      };
+
+      if (content.estado === 'publicado') {
+        content.alcance = parseInt(document.getElementById('alcance').value) || 0;
+        content.likes = parseInt(document.getElementById('likes').value) || 0;
+        content.comentarios = parseInt(document.getElementById('comentarios').value) || 0;
+        content.guardados = parseInt(document.getElementById('guardados').value) || 0;
+        content.compartidos = parseInt(document.getElementById('compartidos').value) || 0;
+        content.visualizaciones = parseInt(document.getElementById('visualizaciones').value) || 0;
+      }
+
+      let result;
+      if (editingId) {
+        result = updateContenido(empresa, editingId, content);
+      } else {
+        result = saveContenido(empresa, content);
+      }
+
+      if (result) {
+        closeModal();
+        renderCalendar();
+      } else {
+        alert('Error al guardar. Verifica los campos obligatorios.');
+      }
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+      } catch {
+        return '-';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

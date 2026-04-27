@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Productos - GTC Marketing</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="main-content">
+      <nav class="navbar" id="navbar"></nav>
+
+      <!-- Agregar Producto -->
+      <section class="section-block">
+        <div class="productos-header">
+          <h2 class="section-heading">Agregar Producto</h2>
+        </div>
+        <form class="product-form" id="productForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="productName">Nombre del Producto *</label>
+              <input type="text" id="productName" placeholder="Nombre del producto" required>
+            </div>
+            <div class="form-group">
+              <label for="productSku">SKU / Codigo</label>
+              <input type="text" id="productSku" placeholder="ABC-123">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="productCategory">Categoria</label>
+              <input type="text" id="productCategory" placeholder="Ej: Accesorios">
+            </div>
+            <div class="form-group">
+              <label for="productPrice">Precio</label>
+              <input type="number" id="productPrice" min="0" step="0.01" placeholder="0.00">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="productDescription">Descripcion</label>
+            <textarea id="productDescription" rows="2" placeholder="Descripcion del producto..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="productTags">Etiquetas (separadas por coma)</label>
+            <input type="text" id="productTags" placeholder="nuevo, bestseller, oferta...">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Agregar Producto</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Importar desde Excel -->
+      <section class="section-block">
+        <h2 class="section-heading">Importar desde Excel</h2>
+        <div class="import-section">
+          <p class="import-description">Copia datos desde Excel (columnas: Nombre, SKU, Categoria, Precio, Descripcion) y pegalos aqui:</p>
+          <textarea id="excelPaste" class="excel-textarea" rows="5" placeholder="Pega aqui los datos de Excel..."></textarea>
+          <button class="btn-secondary" id="importBtn">Importar</button>
+        </div>
+      </section>
+
+      <!-- Lista de Productos -->
+      <section class="section-block">
+        <div class="productos-list-header">
+          <h2 class="section-heading">Catalogo de Productos</h2>
+          <div class="search-box">
+            <input type="text" id="searchProducts" placeholder="Buscar productos..." class="search-input">
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="productsTable">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>SKU</th>
+                <th>Categoria</th>
+                <th>Precio</th>
+                <th>Etiquetas</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody"></tbody>
+          </table>
+        </div>
+        <p class="empty-state" id="emptyProducts" style="display: none;">No hay productos registrados.</p>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderSidebar } from '../components/sidebar.js';
+    import { renderNavbar } from '../components/navbar.js';
+    import { getEmpresaSeleccionada, isModoAdmin } from '../app.js';
+    import { getProductos, saveProducto, deleteProducto } from '../data.js';
+
+    let empresa = null;
+    const isAdmin = isModoAdmin();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      empresa = getEmpresaSeleccionada();
+      if (!empresa) {
+        window.location.href = '../../index.html';
+        return;
+      }
+
+      renderSidebar('productos');
+      renderNavbar('Productos');
+      setupEventListeners();
+      renderProducts();
+    });
+
+    function setupEventListeners() {
+      document.getElementById('productForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveNewProduct();
+      });
+
+      document.getElementById('importBtn').addEventListener('click', importFromExcel);
+
+      document.getElementById('searchProducts').addEventListener('input', (e) => {
+        renderProducts(e.target.value);
+      });
+    }
+
+    function saveNewProduct() {
+      const nameInput = document.getElementById('productName');
+      const name = nameInput.value.trim();
+      
+      if (!name) {
+        alert('El nombre es obligatorio');
+        nameInput.focus();
+        return;
+      }
+
+      const product = {
+        name: name,
+        sku: document.getElementById('productSku').value.trim(),
+        category: document.getElementById('productCategory').value.trim(),
+        price: parseFloat(document.getElementById('productPrice').value) || 0,
+        description: document.getElementById('productDescription').value.trim(),
+        tags: document.getElementById('productTags').value.split(',').map(t => t.trim()).filter(t => t),
+      };
+
+      const result = saveProducto(empresa, product);
+      
+      if (result) {
+        document.getElementById('productForm').reset();
+        renderProducts();
+        showToast('Producto agregado');
+      } else {
+        alert('Error al guardar el producto');
+      }
+    }
+
+    function importFromExcel() {
+      const text = document.getElementById('excelPaste').value.trim();
+      if (!text) {
+        alert('Pega datos de Excel primero');
+        return;
+      }
+
+      const lines = text.split('\n');
+      let imported = 0;
+      let skipped = 0;
+
+      lines.forEach(line => {
+        const cols = line.split('\t');
+        const name = cols[0]?.trim();
+        
+        if (name && name.length > 0) {
+          const product = {
+            name: name,
+            sku: cols[1]?.trim() || '',
+            category: cols[2]?.trim() || '',
+            price: parseFloat(cols[3]?.trim()) || 0,
+            description: cols[4]?.trim() || '',
+            tags: [],
+          };
+          
+          const result = saveProducto(empresa, product);
+          if (result) {
+            imported++;
+          } else {
+            skipped++;
+          }
+        }
+      });
+
+      document.getElementById('excelPaste').value = '';
+      showToast(`Importados: ${imported}${skipped > 0 ? `, Omitidos: ${skipped}` : ''}`);
+      renderProducts();
+    }
+
+    function renderProducts(search = '') {
+      const products = getProductos(empresa);
+      const tbody = document.getElementById('productsTableBody');
+      const empty = document.getElementById('emptyProducts');
+
+      let filtered = products;
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filtered = products.filter(p => 
+          (p.name || '').toLowerCase().includes(searchLower) ||
+          (p.sku || '').toLowerCase().includes(searchLower) ||
+          (p.category || '').toLowerCase().includes(searchLower)
+        );
+      }
+
+      // Sort by newest
+      filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      tbody.innerHTML = filtered.map(p => `
+        <tr>
+          <td>
+            <div class="product-name">${escapeHtml(p.name)}</div>
+            ${p.description ? `<div class="product-desc">${escapeHtml(p.description.substring(0, 50))}${p.description.length > 50 ? '...' : ''}</div>` : ''}
+          </td>
+          <td><code>${escapeHtml(p.sku || '-')}</code></td>
+          <td>${escapeHtml(p.category || '-')}</td>
+          <td>$${(p.price || 0).toFixed(2)}</td>
+          <td>
+            ${p.tags && p.tags.length > 0 ? p.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('') : '-'}
+          </td>
+          <td>
+            <button class="action-btn copy" data-name="${escapeHtml(p.name)}" title="Copiar nombre">C</button>
+            ${isAdmin ? `<button class="action-btn delete" data-id="${p.id}" title="Eliminar">X</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+
+      // Add event listeners
+      tbody.querySelectorAll('.action-btn.copy').forEach(btn => {
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(btn.dataset.name);
+          showToast('Nombre copiado');
+        });
+      });
+
+      tbody.querySelectorAll('.action-btn.delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (confirm('Eliminar este producto?')) {
+            deleteProducto(empresa, parseInt(btn.dataset.id));
+            renderProducts(document.getElementById('searchProducts').value);
+            showToast('Producto eliminado');
+          }
+        });
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+  </script>
+</body>
+</html>
